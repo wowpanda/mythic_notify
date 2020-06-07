@@ -1,73 +1,55 @@
+var persistentNotifs = {};
+
 window.addEventListener('message', function (event) {
-    switch(event.data.action) {
-        case 'shortnotif':
-            DoShortHudText(event.data);
-            break;
-        case 'notif':
-            DoHudText(event.data);
-            break;
-        case 'longnotif':
-            DoLongHudText(event.data);
-            break;
-        default:
-            DoCustomHudText(event.data);
-            break;
-    }
+    ShowNotif(event.data);
 });
 
-function DoShortHudText(data) {
-    var $notification = $('.notification.template').clone();
-    $notification.removeClass('template');
-    $notification.addClass(data.type);
+function CreateNotification(data) {
+    var $notification = $(document.createElement('div'));
+    $notification.addClass('notification').addClass(data.type);
     $notification.html(data.text);
-
     $notification.fadeIn();
-    $('.notif-container').append($notification);
-    setTimeout(function() {
-        $.when($notification.fadeOut()).done(function() {
-            $notification.remove()
+    if (data.style !== undefined) {
+        Object.keys(data.style).forEach(function(css) {
+            $notification.css(css, data.style[css])
         });
-    }, 1000);
+    }
+
+    return $notification;
 }
 
-function DoHudText(data) {
-    var $notification = $('.notification.template').clone();
-    $notification.removeClass('template');
-    $notification.addClass(data.type);
-    $notification.html(data.text);
-    $notification.fadeIn();
-    $('.notif-container').append($notification);
-    setTimeout(function() {
-        $.when($notification.fadeOut()).done(function() {
-            $notification.remove()
-        });
-    }, 2500);
-}
+function ShowNotif(data) {
+    if (data.persist === undefined) {
+        var $notification = CreateNotification(data);
+        $('.notif-container').append($notification);
+        setTimeout(function() {
+            $.when($notification.fadeOut()).done(function() {
+                $notification.remove()
+            });
+        }, data.length != null ? data.length : 2500);
+    } else {
+        if (data.persist.toUpperCase() == 'START') {
+            if (persistentNotifs[data.id] === undefined) {
+                var $notification = CreateNotification(data);
+                $('.notif-container').append($notification);
+                persistentNotifs[data.id] = $notification;
+            } else {
+                let $notification = $(persistentNotifs[data.id])
+                $notification.addClass('notification').addClass(data.type);
+                $notification.html(data.text);
 
-function DoLongHudText(data) {
-    var $notification = $('.notification.template').clone();
-    $notification.removeClass('template');
-    $notification.addClass(data.type);
-    $notification.html(data.text);
-    $notification.fadeIn();
-    $('.notif-container').append($notification);
-    setTimeout(function() {
-        $.when($notification.fadeOut()).done(function() {
-            $notification.remove()
-        });
-    }, 5000);
-}
-
-function DoCustomHudText(data) {
-    var $notification = $('.notification.template').clone();
-    $notification.removeClass('template');
-    $notification.addClass(data.type);
-    $notification.html(data.text);
-    $notification.fadeIn();
-    $('.notif-container').append($notification);
-    setTimeout(function() {
-        $.when($notification.fadeOut()).done(function() {
-            $notification.remove()
-        });
-    }, data.length === undefined ? data.length : 2500);
+                if (data.style !== undefined) {
+                    Object.keys(data.style).forEach(function(css) {
+                        $notification.css(css, data.style[css])
+                    });
+                }
+            }
+        } else if (data.persist.toUpperCase() == 'END') {
+            let $notification = $(persistentNotifs[data.id]);
+            $.when($notification.fadeOut()).done(function() {
+                $notification.remove();
+                delete persistentNotifs[data.id];
+            });
+        }
+    }
 }
